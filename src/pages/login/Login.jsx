@@ -1,8 +1,12 @@
 import React, { Component } from 'react'
 import './login.less'
-import logo from './images/logo.png'
+import logo from '../../assets/images/logo.png'
 
-import { Form, Icon, Input, Button } from 'antd'
+import { Form, Icon, Input, Button, message } from 'antd'
+import { reqLogin } from '../../api'
+import memoryUtils from '../../utils/memoryUtils'
+import storageUtils from '../../utils/storageUtils'
+import { Redirect } from 'react-router-dom'
 /**
  * 登录
  * 路由组建
@@ -11,10 +15,20 @@ class Login extends Component {
   handleSubmit = event => {
     // 阻止默认事件
     event.preventDefault()
-    this.props.form.validateFields((err, values) => {
+    this.props.form.validateFields(async (err, values) => {
       // 校验成功
       if (!err) {
-        console.log(values)
+        const { username, password } = values // { username, password }与 {getFieldDecorator('password', {  这种要一至
+        const result = await reqLogin(username, password)
+        if (result.status === 0) {
+          message.success('登陆成功')
+          const user = result.data
+          memoryUtils.user = user // 保存在内存中
+          storageUtils.saveUser(user) // 保存到localstorage
+          this.props.history.replace('/')
+        } else {
+          message.error(result.msg)
+        }
       } else {
         console.log(err)
       }
@@ -33,7 +47,13 @@ class Login extends Component {
       callback()
     }
   }
+
   render() {
+    // 判断用户是否登录 如果已经登录跳转到管理界面
+    const user = memoryUtils.user
+    if (user && user._id) {
+      return <Redirect to='/' />
+    }
     const form = this.props.form
     const { getFieldDecorator } = form
     return (
@@ -66,7 +86,7 @@ class Login extends Component {
               )}
             </Form.Item>
             <Form.Item>
-              {getFieldDecorator('Password', {
+              {getFieldDecorator('password', {
                 rules: [{ validator: this.validatePwd }]
               })(
                 <Input
@@ -84,7 +104,7 @@ class Login extends Component {
                 htmlType='submit'
                 className='login-form-button'
               >
-                登录
+                登陆
               </Button>
             </Form.Item>
           </Form>
